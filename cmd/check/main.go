@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 	if secretKey = os.Getenv("SECRET_KEY"); secretKey == "" {
-		logger.Error("SECRETKEY env variable must be provided")
+		logger.Error("SECRET_KEY env variable must be provided")
 		return
 	}
 

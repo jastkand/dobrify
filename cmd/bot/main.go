@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
+	"dobrify/botapp"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	botOpts := []bot.Option{
-		bot.WithDefaultHandler(handler),
+		bot.WithDefaultHandler(botapp.DefaultHandler),
 	}
 	if devMode {
 		botOpts = append(botOpts, bot.WithDebug())
@@ -43,17 +43,17 @@ func main() {
 		return
 	}
 
-	b.Start(ctx)
-}
-
-func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	fmt.Printf("%+v\n", ctx)
-	fmt.Printf("%+v\n", b)
-	fmt.Printf("%+v\n", update)
-	if update.Message != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   update.Message.Text,
-		})
+	var secretKey, adminUsername string
+	if secretKey = os.Getenv("SECRET_KEY"); secretKey == "" {
+		logger.Error("SECRET_KEY env variable must be provided")
+		return
 	}
+	if adminUsername = os.Getenv("ADMIN_USERNAME"); adminUsername == "" {
+		logger.Error("ADMIN_USERNAME env variable must be provided")
+		return
+	}
+	app := botapp.NewApp(secretKey, adminUsername)
+	app.RegisterHandlers(b)
+
+	b.Start(ctx)
 }

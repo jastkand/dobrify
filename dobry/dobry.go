@@ -2,9 +2,7 @@ package dobry
 
 import (
 	"dobrify/crypter"
-	"encoding/json"
 	"log/slog"
-	"os"
 )
 
 const (
@@ -30,14 +28,15 @@ var (
 
 type App struct {
 	Client    *Client
-	SecretKey string
+	secretKey string
 }
 
 func NewApp(username, password, secretKey string) *App {
-	token := loadTokenFromFile(secretKey)
+	var token *Token
+	crypter.LoadFromFile(secretKey, "tokens.bin", &token)
 	return &App{
 		Client:    NewClient(username, password, token),
-		SecretKey: secretKey,
+		secretKey: secretKey,
 	}
 }
 
@@ -47,7 +46,7 @@ func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
 		slog.Error("failed to ensure token", "error", err.Error())
 		return nil, err
 	}
-	if err := saveTokenToFile(token, a.SecretKey); err != nil {
+	if err := crypter.SaveToFile(a.secretKey, "tokens.bin", token); err != nil {
 		return nil, err
 	}
 	prizes, err := a.Client.GetPrizes()
@@ -72,51 +71,6 @@ func isWantedPrize(wantedPrizes []string, prize string) bool {
 		}
 	}
 	return false
-}
-
-func loadTokenFromFile(secretKey string) *Token {
-	body, err := os.ReadFile("tokens.bin")
-	if err != nil {
-		slog.Error("no tokens.bin file was found", "error", err.Error())
-		return nil
-	}
-
-	if len(body) == 0 {
-		slog.Error("tokens.bin file is empty")
-		return nil
-	}
-
-	var token *Token
-	cpt := crypter.NewCrypter(secretKey)
-	decrypted, err := cpt.Decrypt(body)
-	if err != nil {
-		slog.Error("failed to decrypt tokens.bin", "error", err.Error())
-		return nil
-	}
-	if err := json.Unmarshal(decrypted, &token); err != nil {
-		slog.Error("failed to unmarshal decrypted tokens.bin", "error", err.Error())
-		return nil
-	}
-	return token
-}
-
-func saveTokenToFile(token *Token, secretKey string) error {
-	cpt := crypter.NewCrypter(secretKey)
-	marshaled, err := json.Marshal(token)
-	if err != nil {
-		slog.Error("failed to marshal token", "error", err.Error())
-		return err
-	}
-	encrypted, err := cpt.Encrypt(marshaled)
-	if err != nil {
-		slog.Error("failed to encrypt token", "error", err.Error())
-		return err
-	}
-	if err := os.WriteFile("tokens.bin", encrypted, 0644); err != nil {
-		slog.Error("failed to write token to file", "error", err.Error())
-		return err
-	}
-	return nil
 }
 
 func PrizeName(prize string) string {
