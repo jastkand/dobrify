@@ -24,6 +24,7 @@ var (
 	Caps        = []string{CapGreen, CapWhite, CapRed}
 	Elks        = []string{ElkRed, ElkWhite, ElkGreen}
 	Sweatshirts = []string{SweatshirtWhite, SweatshirtGreen, SweatshirtRed}
+	AllPrizes   = append(Glasses, append(Caps, append(Elks, Sweatshirts...)...)...)
 )
 
 type App struct {

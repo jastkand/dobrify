@@ -164,7 +164,7 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 		})
 		return
 	}
-	prizes, err := a.dobryApp.HasWantedPrizes(dobry.Elks)
+	prizes, err := a.dobryApp.HasWantedPrizes(dobry.AllPrizes)
 	if err != nil {
 		slog.Error("failed to check for wanted prizes", "error", err.Error())
 		b.SendMessage(ctx, &bot.SendMessageParams{
