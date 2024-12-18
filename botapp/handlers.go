@@ -3,6 +3,7 @@ package botapp
 import (
 	"context"
 	"dobrify/dobry"
+	"errors"
 	"log/slog"
 	"strings"
 
@@ -52,18 +53,18 @@ func (a *App) statusHandler(ctx context.Context, b *bot.Bot, update *models.Upda
 	}
 	var text string
 	if a.state.Pause {
-		text = "I'm paused."
+		text = "Отдыхаю."
 	} else {
-		text = "I'm running."
+		text = "Работаю."
 	}
 	if len(a.state.NotifyUsers) > 0 {
 		usersNames := make([]string, 0, len(a.state.NotifyUsers))
 		for _, uname := range a.state.NotifyUsers {
 			usersNames = append(usersNames, "@"+uname)
 		}
-		text += "\n\nI'm going to notify those users: " + strings.Join(usersNames, ", ")
+		text += "\n\nБуду оповещать: " + strings.Join(usersNames, ", ")
 	} else {
-		text += "\n\nI'm not going to notify anyone."
+		text += "\n\nНикому ничего не скажу."
 	}
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
@@ -80,7 +81,7 @@ func (a *App) subscribeHandler(ctx context.Context, b *bot.Bot, update *models.U
 	if len(text) <= 5 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Please provide a username to subscribe.",
+			Text:   "А кого подписывать? Юзернейм надо.",
 		})
 		return
 	}
@@ -114,7 +115,7 @@ func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	a.pause(ctx)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "I'm paused.",
+		Text:   "Отдыхаю.",
 	})
 }
 
@@ -126,14 +127,14 @@ func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Upda
 	if a.state.Pause == false {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "I'm not paused.",
+			Text:   "Я и так работаю.",
 		})
 		return
 	}
 	a.resume(ctx)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "I'm running.",
+		Text:   "Готов к роботе.",
 	})
 }
 
@@ -145,31 +146,19 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 			break
 		}
 	}
-
 	if !canCheck {
 		a.adminGuard(ctx, b, update)
 		return
 	}
-	if a.state.Pause {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "I'm paused now. Can't check for wanted prizes.",
-		})
-		return
-	}
-	if a.dobryApp == nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Dobry app is not initialized.",
-		})
-		return
-	}
-	prizes, err := a.dobryApp.HasWantedPrizes(dobry.AllPrizes)
+	prizes, err := hasWantedPrizes(a, dobry.AllPrizes)
 	if err != nil {
-		slog.Error("failed to check for wanted prizes", "error", err.Error())
+		message := "Ошибка при запросе призов."
+		if errors.Is(err, errAppPaused) {
+			message = "Отдыхаю. Не могу проверить призы."
+		}
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Failed to check for wanted prizes.",
+			Text:   message,
 		})
 		return
 	}
@@ -188,4 +177,19 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 			Text:   "Интересующих призов нет в наличии.",
 		})
 	}
+}
+
+func hasWantedPrizes(a *App, wanted []string) ([]string, error) {
+	if a.state.Pause {
+		return nil, errAppPaused
+	}
+	if a.dobryApp == nil {
+		return nil, errDobryAppMissing
+	}
+	prizes, err := a.dobryApp.HasWantedPrizes(wanted)
+	if err != nil {
+		slog.Error("failed to check for wanted prizes", "error", err.Error())
+		return nil, err
+	}
+	return prizes, nil
 }

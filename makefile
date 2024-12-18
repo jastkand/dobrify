@@ -6,3 +6,6 @@ bot.dev: .env
 
 check.dev: .env
 	go run cmd/check/main.go
+
+cron.dev: .env
+	go run cmd/cron/main.go

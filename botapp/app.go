@@ -4,12 +4,9 @@ import (
 	"context"
 	"dobrify/crypter"
 	"dobrify/dobry"
-	"errors"
 	"log/slog"
 	"os"
 )
-
-var errUserNotFound = errors.New("user not found")
 
 const filename = "app_state.bin"
 
