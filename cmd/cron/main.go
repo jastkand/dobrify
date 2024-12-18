@@ -4,6 +4,7 @@ import (
 	"context"
 	"dobrify/botapp"
 	"dobrify/dobry"
+	"dobrify/internal/alog"
 	"fmt"
 	"log/slog"
 	"os"
@@ -20,19 +21,15 @@ func main() {
 		devMode = true
 	}
 
-	loggerOpts := &slog.HandlerOptions{}
-	if devMode {
-		loggerOpts.Level = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, loggerOpts))
-	slog.SetDefault(logger)
+	logger, close := alog.New("cron.log", devMode)
+	defer close()
 
 	botOpts := []bot.Option{
 		bot.WithDebugHandler(func(format string, args ...any) {
 			logger.Debug(fmt.Sprintf(format, args...))
 		}),
 		bot.WithErrorsHandler(func(err error) {
-			logger.Error("bot error", "error", err.Error())
+			logger.Error("bot error", alog.Error(err))
 		}),
 		bot.WithSkipGetMe(),
 	}
@@ -42,7 +39,7 @@ func main() {
 
 	b, err := bot.New(os.Getenv("BOT_TOKEN"), botOpts...)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create bot: %v", err.Error()))
+		logger.Error("failed to create bot", alog.Error(err))
 		return
 	}
 
@@ -63,7 +60,7 @@ func main() {
 	slog.Debug("starting scheduler")
 	s, err := gocron.NewScheduler()
 	if err != nil {
-		slog.Error("failed to create scheduler", "error", err.Error())
+		slog.Error("failed to create scheduler", alog.Error(err))
 		return
 	}
 	_, err = s.NewJob(
@@ -73,7 +70,7 @@ func main() {
 		}),
 	)
 	if err != nil {
-		slog.Error("failed to create job", "error", err.Error())
+		slog.Error("failed to create job", alog.Error(err))
 		return
 	}
 
@@ -90,7 +87,7 @@ func main() {
 
 		jobCancel()
 		if err = s.Shutdown(); err != nil {
-			slog.Error("failed to shutdown scheduler", "error", err.Error())
+			slog.Error("failed to shutdown scheduler", alog.Error(err))
 		}
 
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), 5*time.Second)
