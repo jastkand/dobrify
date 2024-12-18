@@ -11,7 +11,7 @@ import (
 
 func (a *App) CheckPrizesAvailable(ctx context.Context, b *bot.Bot, wanted []string) {
 	prizes, err := hasWantedPrizes(a, wanted)
-	if err != nil {
+	if err != nil || len(prizes) == 0 {
 		return
 	}
 

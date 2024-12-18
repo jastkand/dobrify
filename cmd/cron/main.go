@@ -8,14 +8,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/go-co-op/gocron/v2"
 	"github.com/go-telegram/bot"
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
 	var devMode bool
 	if os.Getenv("DEV_MODE") == "1" {
 		devMode = true
@@ -29,13 +28,16 @@ func main() {
 	slog.SetDefault(logger)
 
 	botOpts := []bot.Option{
+		bot.WithDebugHandler(func(format string, args ...any) {
+			logger.Debug(fmt.Sprintf(format, args...))
+		}),
+		bot.WithErrorsHandler(func(err error) {
+			logger.Error("bot error", "error", err.Error())
+		}),
 		bot.WithSkipGetMe(),
 	}
 	if devMode {
 		botOpts = append(botOpts, bot.WithDebug())
-		botOpts = append(botOpts, bot.WithDebugHandler(func(format string, args ...any) {
-			logger.Info(fmt.Sprintf(format, args...))
-		}))
 	}
 
 	b, err := bot.New(os.Getenv("BOT_TOKEN"), botOpts...)
@@ -54,5 +56,51 @@ func main() {
 		return
 	}
 	app := botapp.NewApp(secretKey, adminUsername)
-	app.CheckPrizesAvailable(ctx, b, dobry.Glasses)
+
+	jobCtx, jobCancel := context.WithCancel(context.Background())
+	defer jobCancel()
+
+	slog.Debug("starting scheduler")
+	s, err := gocron.NewScheduler()
+	if err != nil {
+		slog.Error("failed to create scheduler", "error", err.Error())
+		return
+	}
+	_, err = s.NewJob(
+		gocron.CronJob("*/10 * * * *", false),
+		gocron.NewTask(func() {
+			app.CheckPrizesAvailable(jobCtx, b, dobry.Glasses)
+		}),
+	)
+	if err != nil {
+		slog.Error("failed to create job", "error", err.Error())
+		return
+	}
+
+	s.Start()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, os.Kill)
+
+	done := make(chan struct{})
+
+	go func() {
+		<-quit
+		slog.Debug("shutdown signal received")
+
+		jobCancel()
+		if err = s.Shutdown(); err != nil {
+			slog.Error("failed to shutdown scheduler", "error", err.Error())
+		}
+
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer timeoutCancel()
+
+		slog.Debug("waiting for shutdown to complete")
+		<-timeoutCtx.Done()
+
+		done <- struct{}{}
+	}()
+
+	<-done
 }
