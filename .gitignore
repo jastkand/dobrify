@@ -2,3 +2,4 @@
 vendor/
 example_responses/
 *.bin
+*.log

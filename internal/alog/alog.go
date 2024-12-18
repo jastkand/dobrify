@@ -7,7 +7,13 @@ import (
 )
 
 func New(logFilename string, devMode bool) (*slog.Logger, func()) {
-	w := logWriter(logFilename, devMode)
+	var w io.Writer = os.Stdout
+
+	fw := fileWriter(logFilename, devMode)
+	if fw != nil {
+		w = io.MultiWriter(os.Stdout, fw)
+	}
+
 	loggerOpts := &slog.HandlerOptions{}
 	if devMode {
 		loggerOpts.Level = slog.LevelDebug
@@ -17,8 +23,8 @@ func New(logFilename string, devMode bool) (*slog.Logger, func()) {
 	slog.SetDefault(logger)
 
 	return logger, func() {
-		if f, ok := w.(*os.File); ok {
-			f.Close()
+		if fw != nil {
+			fw.Close()
 		}
 	}
 }
@@ -34,9 +40,9 @@ func logHandler(w io.Writer, opts *slog.HandlerOptions, devMode bool) slog.Handl
 	return slog.NewJSONHandler(w, opts)
 }
 
-func logWriter(logFilename string, devMode bool) io.Writer {
+func fileWriter(logFilename string, devMode bool) *os.File {
 	if logFilename == "" || devMode {
-		return os.Stdout
+		return nil
 	}
 
 	f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
