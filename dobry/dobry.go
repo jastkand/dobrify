@@ -2,6 +2,7 @@ package dobry
 
 import (
 	"dobrify/crypter"
+	"dobrify/internal/config"
 	"log/slog"
 )
 
@@ -28,16 +29,16 @@ var (
 )
 
 type App struct {
-	Client    *Client
-	secretKey string
+	cfg    config.Config
+	Client *Client
 }
 
-func NewApp(username, password, secretKey string) *App {
+func NewApp(cfg config.Config) *App {
 	var token *Token
-	crypter.LoadFromFile(secretKey, "tokens.bin", &token)
+	crypter.LoadFromFile(cfg.SecretKey, "tokens.bin", &token)
 	return &App{
-		Client:    NewClient(username, password, token),
-		secretKey: secretKey,
+		cfg:    cfg,
+		Client: NewClient(cfg.DobryUsername, cfg.DobryPassword, token),
 	}
 }
 
@@ -47,7 +48,7 @@ func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
 		slog.Error("failed to ensure token", "error", err.Error())
 		return nil, err
 	}
-	if err := crypter.SaveToFile(a.secretKey, "tokens.bin", token); err != nil {
+	if err := crypter.SaveToFile(a.cfg.SecretKey, "tokens.bin", token); err != nil {
 		return nil, err
 	}
 	prizes, err := a.Client.GetPrizes()

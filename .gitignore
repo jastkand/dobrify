@@ -1,5 +1,6 @@
 .env
-vendor/
-example_responses/
 *.bin
 *.log
+bin/
+example_responses/
+vendor/

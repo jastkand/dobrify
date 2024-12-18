@@ -4,8 +4,8 @@ import (
 	"context"
 	"dobrify/crypter"
 	"dobrify/dobry"
+	"dobrify/internal/config"
 	"log/slog"
-	"os"
 )
 
 const filename = "app_state.bin"
@@ -21,36 +21,24 @@ type User struct {
 }
 
 type App struct {
-	secretKey     string
-	adminUsername string
-	dobryApp      *dobry.App
-	state         *AppState
+	cfg      config.Config
+	dobryApp *dobry.App
+	state    *AppState
 }
 
-func NewApp(secretKey, adminUsername string) *App {
+func NewApp(cfg config.Config) *App {
 	var appState *AppState
-	crypter.LoadFromFile(secretKey, filename, &appState)
+	crypter.LoadFromFile(cfg.SecretKey, filename, &appState)
 	app := &App{
-		secretKey:     secretKey,
-		adminUsername: adminUsername,
-		state:         appState,
+		cfg:   cfg,
+		state: appState,
 	}
 	if app.state == nil {
 		app.state = app.initState()
 	}
 	app.fixupState()
 
-	var username, password string
-	if username = os.Getenv("DOBRY_USERNAME"); username == "" {
-		slog.Error("DOBRY_USERNAME env variable must be provided")
-		return app
-	}
-	if password = os.Getenv("DOBRY_PASSWORD"); password == "" {
-		slog.Error("DOBRY_PASSWORD env variable must be provided")
-		return app
-	}
-
-	app.dobryApp = dobry.NewApp(username, password, secretKey)
+	app.dobryApp = dobry.NewApp(cfg)
 	return app
 }
 
@@ -58,7 +46,7 @@ func (a *App) initState() *AppState {
 	return &AppState{
 		Pause:       false,
 		Users:       make(map[string]*User),
-		NotifyUsers: []string{a.adminUsername},
+		NotifyUsers: []string{a.cfg.AdminUsername},
 	}
 }
 
@@ -67,7 +55,7 @@ func (a *App) fixupState() {
 		a.state.Users = make(map[string]*User)
 	}
 	if a.state.NotifyUsers == nil {
-		a.state.NotifyUsers = []string{a.adminUsername}
+		a.state.NotifyUsers = []string{a.cfg.AdminUsername}
 	}
 	notifyUsers := make([]string, 0, len(a.state.NotifyUsers))
 	for _, uname := range a.state.NotifyUsers {
@@ -124,5 +112,5 @@ func (a *App) saveState(ctx context.Context) {
 		slog.Debug("context is done, not saving state")
 		return
 	}
-	crypter.SaveToFile(a.secretKey, filename, a.state)
+	crypter.SaveToFile(a.cfg.SecretKey, filename, a.state)
 }

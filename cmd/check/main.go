@@ -2,37 +2,24 @@ package main
 
 import (
 	"dobrify/dobry"
-	"log/slog"
+	"dobrify/internal/alog"
+	"dobrify/internal/config"
 	"os"
 )
 
 func main() {
-	var devMode bool
-	if os.Getenv("DEV_MODE") == "1" {
-		devMode = true
-	}
-	loggerOpts := &slog.HandlerOptions{}
-	if devMode {
-		loggerOpts.Level = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, loggerOpts))
-	slog.SetDefault(logger)
+	devMode := os.Getenv("DEV_MODE") == "1"
 
-	var username, password, secretKey string
-	if username = os.Getenv("DOBRY_USERNAME"); username == "" {
-		logger.Error("DOBRY_USERNAME env variable must be provided")
-		return
-	}
-	if password = os.Getenv("DOBRY_PASSWORD"); password == "" {
-		logger.Error("DOBRY_PASSWORD env variable must be provided")
-		return
-	}
-	if secretKey = os.Getenv("SECRET_KEY"); secretKey == "" {
-		logger.Error("SECRET_KEY env variable must be provided")
+	logger, close := alog.New("check.log", devMode)
+	defer close()
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Error("failed to load config", alog.Error(err))
 		return
 	}
 
-	app := dobry.NewApp(username, password, secretKey)
+	app := dobry.NewApp(cfg)
 	prizes, err := app.HasWantedPrizes(dobry.Glasses)
 	if err != nil {
 		logger.Error("failed to check for wanted prizes", "error", err.Error())

@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"dobrify/botapp"
+	"dobrify/internal/alog"
+	"dobrify/internal/config"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 
@@ -12,48 +13,40 @@ import (
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
+	devMode := os.Getenv("DEV_MODE") == "1"
 
-	var devMode bool
-	if os.Getenv("DEV_MODE") == "1" {
-		devMode = true
-	}
+	logger, close := alog.New("bot.log", devMode)
+	defer close()
 
-	loggerOpts := &slog.HandlerOptions{}
-	if devMode {
-		loggerOpts.Level = slog.LevelDebug
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Error("failed to load config", alog.Error(err))
+		return
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, loggerOpts))
-	slog.SetDefault(logger)
 
 	botOpts := []bot.Option{
+		bot.WithDebugHandler(func(format string, args ...any) {
+			logger.Debug(fmt.Sprintf(format, args...))
+		}),
+		bot.WithErrorsHandler(func(err error) {
+			logger.Error("bot error", alog.Error(err))
+		}),
 		bot.WithDefaultHandler(botapp.DefaultHandler),
 	}
 	if devMode {
 		botOpts = append(botOpts, bot.WithDebug())
-		botOpts = append(botOpts, bot.WithDebugHandler(func(format string, args ...any) {
-			logger.Info(fmt.Sprintf(format, args...))
-		}))
 	}
 
-	b, err := bot.New(os.Getenv("BOT_TOKEN"), botOpts...)
+	b, err := bot.New(cfg.BotToken, botOpts...)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create bot: %v", err.Error()))
+		logger.Error("failed to create bot", alog.Error(err))
 		return
 	}
 
-	var secretKey, adminUsername string
-	if secretKey = os.Getenv("SECRET_KEY"); secretKey == "" {
-		logger.Error("SECRET_KEY env variable must be provided")
-		return
-	}
-	if adminUsername = os.Getenv("ADMIN_USERNAME"); adminUsername == "" {
-		logger.Error("ADMIN_USERNAME env variable must be provided")
-		return
-	}
-	app := botapp.NewApp(secretKey, adminUsername)
+	app := botapp.NewApp(cfg)
 	app.RegisterHandlers(b)
 
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 	b.Start(ctx)
 }

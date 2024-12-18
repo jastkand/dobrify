@@ -47,7 +47,7 @@ func (a *App) helloHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 }
 
 func (a *App) statusHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	if update.Message.From.Username != a.adminUsername {
+	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
@@ -73,7 +73,7 @@ func (a *App) statusHandler(ctx context.Context, b *bot.Bot, update *models.Upda
 }
 
 func (a *App) subscribeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	if update.Message.From.Username != a.adminUsername {
+	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
@@ -108,7 +108,7 @@ func (a *App) subscribeHandler(ctx context.Context, b *bot.Bot, update *models.U
 }
 
 func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	if update.Message.From.Username != a.adminUsername {
+	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
@@ -120,7 +120,7 @@ func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 }
 
 func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	if update.Message.From.Username != a.adminUsername {
+	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}

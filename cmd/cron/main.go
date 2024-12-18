@@ -5,6 +5,7 @@ import (
 	"dobrify/botapp"
 	"dobrify/dobry"
 	"dobrify/internal/alog"
+	"dobrify/internal/config"
 	"fmt"
 	"log/slog"
 	"os"
@@ -16,13 +17,16 @@ import (
 )
 
 func main() {
-	var devMode bool
-	if os.Getenv("DEV_MODE") == "1" {
-		devMode = true
-	}
+	devMode := os.Getenv("DEV_MODE") == "1"
 
 	logger, close := alog.New("cron.log", devMode)
 	defer close()
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Error("failed to load config", alog.Error(err))
+		return
+	}
 
 	botOpts := []bot.Option{
 		bot.WithDebugHandler(func(format string, args ...any) {
@@ -37,22 +41,13 @@ func main() {
 		botOpts = append(botOpts, bot.WithDebug())
 	}
 
-	b, err := bot.New(os.Getenv("BOT_TOKEN"), botOpts...)
+	b, err := bot.New(cfg.BotToken, botOpts...)
 	if err != nil {
 		logger.Error("failed to create bot", alog.Error(err))
 		return
 	}
 
-	var secretKey, adminUsername string
-	if secretKey = os.Getenv("SECRET_KEY"); secretKey == "" {
-		logger.Error("SECRET_KEY env variable must be provided")
-		return
-	}
-	if adminUsername = os.Getenv("ADMIN_USERNAME"); adminUsername == "" {
-		logger.Error("ADMIN_USERNAME env variable must be provided")
-		return
-	}
-	app := botapp.NewApp(secretKey, adminUsername)
+	app := botapp.NewApp(cfg)
 
 	jobCtx, jobCancel := context.WithCancel(context.Background())
 	defer jobCancel()
