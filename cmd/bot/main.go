@@ -13,9 +13,7 @@ import (
 )
 
 func main() {
-	devMode := os.Getenv("DEV_MODE") == "1"
-
-	logger, close := alog.New("bot.log", devMode)
+	logger, close := alog.New("bot.log", config.IsDevStage())
 	defer close()
 
 	cfg, err := config.LoadConfig()
@@ -33,7 +31,7 @@ func main() {
 		}),
 		bot.WithDefaultHandler(botapp.DefaultHandler),
 	}
-	if devMode {
+	if cfg.IsDev() {
 		botOpts = append(botOpts, bot.WithDebug())
 	}
 

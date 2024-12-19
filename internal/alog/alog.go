@@ -29,10 +29,6 @@ func New(logFilename string, devMode bool) (*slog.Logger, func()) {
 	}
 }
 
-func Error(err error) slog.Attr {
-	return slog.String("error", err.Error())
-}
-
 func logHandler(w io.Writer, opts *slog.HandlerOptions, devMode bool) slog.Handler {
 	if devMode {
 		return slog.NewTextHandler(w, opts)
@@ -50,4 +46,8 @@ func fileWriter(logFilename string, devMode bool) *os.File {
 		panic(err)
 	}
 	return f
+}
+
+func Error(err error) slog.Attr {
+	return slog.String("error", err.Error())
 }

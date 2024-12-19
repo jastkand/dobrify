@@ -1,48 +1,43 @@
 package config
 
 import (
-	"errors"
+	"dobrify/internal/alog"
 	"fmt"
+	"log/slog"
 	"os"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
-var errMissingEnvVar = errors.New("missing env variable")
-
 type Config struct {
-	DevMode       bool
-	BotToken      string
-	DobryUsername string
-	DobryPassword string
-	AdminUsername string
-	SecretKey     string
+	Stage         string `env:"STAGE,default=dev"`
+	BotToken      string `env:"BOT_TOKEN"`
+	DobryUsername string `env:"DOBRY_USERNAME,required"`
+	DobryPassword string `env:"DOBRY_PASSWORD,required"`
+	AdminUsername string `env:"ADMIN_USERNAME,required"`
+	SecretKey     string `env:"SECRET_KEY,required"`
+}
+
+func (c Config) IsDev() bool {
+	return c.Stage == "dev"
 }
 
 func LoadConfig() (Config, error) {
-	cfg := Config{
-		DevMode:  os.Getenv("DEV_MODE") == "1",
-		BotToken: os.Getenv("BOT_TOKEN"),
+	if err := godotenv.Load(); err != nil {
+		slog.Error("failed to load .env file", alog.Error(err))
+		slog.Debug(".env file is missing, using environment variables")
 	}
 
-	var err error
-	if cfg.SecretKey, err = requireEnvVar("SECRET_KEY"); err != nil {
-		return Config{}, err
-	}
-	if cfg.DobryUsername, err = requireEnvVar("DOBRY_USERNAME"); err != nil {
-		return Config{}, err
-	}
-	if cfg.DobryPassword, err = requireEnvVar("DOBRY_PASSWORD"); err != nil {
-		return Config{}, err
-	}
-	if cfg.AdminUsername, err = requireEnvVar("ADMIN_USERNAME"); err != nil {
-		return Config{}, err
+	var cfg Config
+	if err := env.Parse(&cfg); err != nil {
+		return Config{}, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	return cfg, nil
 }
 
-func requireEnvVar(name string) (string, error) {
-	if v := os.Getenv(name); v != "" {
-		return v, nil
-	}
-	return "", fmt.Errorf("%w: %s", errMissingEnvVar, name)
+func IsDevStage() bool {
+	envStage := os.Getenv("STAGE")
+	return envStage == "" || envStage == "dev"
 }

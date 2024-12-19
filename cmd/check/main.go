@@ -4,13 +4,10 @@ import (
 	"dobrify/dobry"
 	"dobrify/internal/alog"
 	"dobrify/internal/config"
-	"os"
 )
 
 func main() {
-	devMode := os.Getenv("DEV_MODE") == "1"
-
-	logger, close := alog.New("check.log", devMode)
+	logger, close := alog.New("check.log", config.IsDevStage())
 	defer close()
 
 	cfg, err := config.LoadConfig()
