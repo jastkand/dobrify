@@ -141,6 +141,10 @@ func (a *App) saveState(ctx context.Context) {
 		return
 	}
 	a.state.UpdatedAt = time.Now()
-	a.encStore.SaveToFile(encryptedFilename, a.state)
-	a.store.SaveToFile(jsonFilename, a.state)
+	if err := a.encStore.SaveToFile(encryptedFilename, a.state); err != nil {
+		slog.Error("failed to save encrypted state", alog.Error(err), "filename", encryptedFilename)
+	}
+	if err := a.store.SaveToFile(jsonFilename, a.state); err != nil {
+		slog.Error("failed to save json state", alog.Error(err), "filename", jsonFilename)
+	}
 }

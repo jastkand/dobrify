@@ -2,10 +2,8 @@ package storage
 
 import (
 	"dobrify/crypter"
-	"dobrify/internal/alog"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 )
 
@@ -42,17 +40,14 @@ func (c *cryptedStorage) LoadFromFile(filename string, dest interface{}) error {
 func (c *cryptedStorage) SaveToFile(filename string, source interface{}) error {
 	marshaled, err := json.Marshal(source)
 	if err != nil {
-		slog.Error("failed to marshal source", "filename", filename, alog.Error(err))
-		return err
+		return fmt.Errorf("failed to marshal source: %w", err)
 	}
 	encrypted, err := c.crtpr.Encrypt(marshaled)
 	if err != nil {
-		slog.Error("failed to encrypt source", "filename", filename, alog.Error(err))
-		return err
+		return fmt.Errorf("failed to encrypt source: %w", err)
 	}
 	if err := os.WriteFile(filename, encrypted, 0644); err != nil {
-		slog.Error("failed to write file", "filename", filename, alog.Error(err))
-		return err
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 	return nil
 }
