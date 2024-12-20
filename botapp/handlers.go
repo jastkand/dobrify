@@ -12,7 +12,7 @@ import (
 )
 
 func (a *App) RegisterHandlers(b *bot.Bot) {
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/hello", bot.MatchTypeExact, a.helloHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, a.startHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypeExact, a.statusHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub ", bot.MatchTypePrefix, a.subscribeHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/pause", bot.MatchTypeExact, a.pauseHandler)
@@ -24,7 +24,7 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "You're probably looking for something else 🤔",
+			Text:   "Ничего не понятно 🤔",
 		})
 	}
 }
@@ -37,7 +37,7 @@ func (a *App) adminGuard(ctx context.Context, b *bot.Bot, update *models.Update)
 	})
 }
 
-func (a *App) helloHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	a.addUser(ctx, update.Message.From.Username, update.Message.Chat.ID)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -62,7 +62,7 @@ func (a *App) statusHandler(ctx context.Context, b *bot.Bot, update *models.Upda
 		for _, uname := range a.state.NotifyUsers {
 			usersNames = append(usersNames, "@"+uname)
 		}
-		text += "\n\nБуду оповещать: " + strings.Join(usersNames, ", ")
+		text += "\n\nРазрешено оповещать: " + strings.Join(usersNames, ", ")
 	} else {
 		text += "\n\nНикому ничего не скажу."
 	}
@@ -86,25 +86,18 @@ func (a *App) subscribeHandler(ctx context.Context, b *bot.Bot, update *models.U
 		return
 	}
 	username := text[5:]
-	subbed, err := a.subscribeUser(ctx, username)
+	_, err := a.subscribeUser(ctx, username)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "User @" + username + " is not registered.",
+			Text:   "Пользаватель @" + username + " не зарегистрирован.",
 		})
 		return
 	}
-	if subbed {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "User @" + username + " subscribed.",
-		})
-	} else {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "User @" + username + " is already subscribed.",
-		})
-	}
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Пользаватель @" + username + " подписан.",
+	})
 }
 
 func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
