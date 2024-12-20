@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-const encryptedFilename = "app_state.bin"
-const jsonFilename = "app_state.json"
+const storeFilename = "app_state.json"
 
 type AppState struct {
 	Pause       bool
@@ -27,39 +26,22 @@ type User struct {
 type App struct {
 	cfg      config.Config
 	store    storage.Storage
-	encStore storage.Storage
 	dobryApp *dobry.App
 	state    *AppState
 }
 
 func NewApp(cfg config.Config) *App {
 	store := storage.NewPlainStore()
-	encStore := storage.NewCryptedStore(cfg.SecretKey)
+
 	var appState AppState
-
-	var encryptedState AppState
-	if err := encStore.LoadFromFile(encryptedFilename, &encryptedState); err != nil {
-		slog.Error("failed to load encrypted state", alog.Error(err), "filename", encryptedFilename)
-	}
-
-	var jsonState AppState
-	if err := encStore.LoadFromFile(encryptedFilename, &jsonState); err != nil {
-		slog.Error("failed to load json state", alog.Error(err), "filename", jsonFilename)
-	}
-
-	if !jsonState.UpdatedAt.IsZero() && jsonState.UpdatedAt.After(encryptedState.UpdatedAt) {
-		slog.Info("using json state")
-		appState = jsonState
-	} else {
-		slog.Info("using encrypted state")
-		appState = encryptedState
+	if err := store.LoadFromFile(storeFilename, &appState); err != nil {
+		slog.Error("failed to load json state", alog.Error(err), "filename", storeFilename)
 	}
 
 	app := &App{
-		cfg:      cfg,
-		store:    store,
-		encStore: encStore,
-		state:    &appState,
+		cfg:   cfg,
+		store: store,
+		state: &appState,
 	}
 	if app.state == nil {
 		app.state = app.initState()
@@ -141,10 +123,7 @@ func (a *App) saveState(ctx context.Context) {
 		return
 	}
 	a.state.UpdatedAt = time.Now()
-	if err := a.encStore.SaveToFile(encryptedFilename, a.state); err != nil {
-		slog.Error("failed to save encrypted state", alog.Error(err), "filename", encryptedFilename)
-	}
-	if err := a.store.SaveToFile(jsonFilename, a.state); err != nil {
-		slog.Error("failed to save json state", alog.Error(err), "filename", jsonFilename)
+	if err := a.store.SaveToFile(storeFilename, a.state); err != nil {
+		slog.Error("failed to save json state", alog.Error(err), "filename", storeFilename)
 	}
 }
