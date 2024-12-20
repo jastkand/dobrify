@@ -27,11 +27,11 @@ type App struct {
 }
 
 func NewApp(cfg config.Config) *App {
-	var appState *AppState
+	var appState AppState
 	crypter.LoadFromFile(cfg.SecretKey, filename, &appState)
 	app := &App{
 		cfg:   cfg,
-		state: appState,
+		state: &appState,
 	}
 	if app.state == nil {
 		app.state = app.initState()

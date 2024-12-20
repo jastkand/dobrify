@@ -152,18 +152,14 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	}
 	prizes, err := hasWantedPrizes(a, dobry.AllPrizes)
 	if err != nil {
-		message := "Ошибка при запросе призов."
-		if errors.Is(err, errAppPaused) {
-			message = "Отдыхаю. Не могу проверить призы."
-		}
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   message,
+			Text:   "Ошибка при запросе призов.",
 		})
 		return
 	}
 	if len(prizes) > 0 {
-		text := "Доступны интересующие призы:\n"
+		text := "Список доступных призов:\n"
 		for _, prize := range prizes {
 			text += "- " + dobry.PrizeName(prize) + "\n"
 		}
@@ -174,15 +170,12 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	} else {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Интересующих призов нет в наличии.",
+			Text:   "Нет доступных призов.",
 		})
 	}
 }
 
 func hasWantedPrizes(a *App, wanted []string) ([]string, error) {
-	if a.state.Pause {
-		return nil, errAppPaused
-	}
 	if a.dobryApp == nil {
 		return nil, errDobryAppMissing
 	}
