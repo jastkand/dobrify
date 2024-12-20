@@ -1,32 +1,44 @@
 # Dobrify Bot
 
-Notify about new prizes appearing in the game
+Notify about new prizes appearing in Dobry Cola contest
 
-### Endpoints
+### Deploy
 
-```
-curl 'https://dobrycola-promo.ru/backend/oauth/token' \
-  -H 'accept: application/json' \
-  -H 'content-type: application/json' \
-  -H 'origin: https://dobrycola-promo.ru' \
-  -H 'referer: https://dobrycola-promo.ru/?signin' \
-  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' \
-  --data-raw '{"username":"xxx","password":"xxx"}'
+Via supervisor
+
+```bash
+sudo apt update && sudo apt install supervisor
 ```
 
-```
-curl 'https://dobrycola-promo.ru/backend/private/user' \
-  -H 'accept: application/json' \
-  -H 'authorization: Bearer ${AUTH_TOKEN}' \
-  -H 'referer: https://dobrycola-promo.ru/?signin' \
-  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+```conf
+; /etc/supervisor/conf.d/dobrify.conf
+[program:dobrify-bot]
+directory=/var/www/app
+command=/var/www/app/dobrify bot
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/dobrify-bot.err.log
+stdout_logfile=/var/log/dobrify-bot.out.log
+
+[program:dobrify-cron]
+directory=/var/www/app
+command=/var/www/app/dobrify cron
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/dobrify-cron.err.log
+stdout_logfile=/var/log/dobrify-cron.out.log
 ```
 
-```
-curl 'https://dobrycola-promo.ru/backend/private/prize/shop' \
-  -H 'accept: application/json' \
-  -H 'authorization: Bearer ${AUTH_TOKEN}' \
-  -H 'referer: https://dobrycola-promo.ru/profile' \
-  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
 ```
 
+### Update
+
+```sh
+# /var/www/app/after_deploy.sh
+sudo supervisorctl stop dobrify-bot dobrify-cron
+mv /var/www/app/dobrify-linux /var/www/app/dobrify
+sudo supervisorctl start dobrify-bot dobrify-cron
+```
