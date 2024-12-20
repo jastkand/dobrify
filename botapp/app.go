@@ -16,7 +16,7 @@ type AppState struct {
 	Pause       bool
 	Users       map[string]*User
 	NotifyUsers []string
-	UpdatedAt   time.Time
+	Version     int64 `json:"v"`
 }
 
 type User struct {
@@ -122,7 +122,7 @@ func (a *App) saveState(ctx context.Context) {
 		slog.Debug("context is done, not saving state")
 		return
 	}
-	a.state.UpdatedAt = time.Now()
+	a.state.Version = time.Now().UnixMilli()
 	if err := a.store.SaveToFile(storeFilename, a.state); err != nil {
 		slog.Error("failed to save json state", alog.Error(err), "filename", storeFilename)
 	}
