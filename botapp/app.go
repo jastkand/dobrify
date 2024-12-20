@@ -22,15 +22,20 @@ type User struct {
 
 type App struct {
 	cfg      config.Config
+	cpt      *crypter.Crypter
 	dobryApp *dobry.App
 	state    *AppState
 }
 
 func NewApp(cfg config.Config) *App {
+	cpt := crypter.NewCrypter(cfg.SecretKey)
+
 	var appState AppState
-	crypter.LoadFromFile(cfg.SecretKey, filename, &appState)
+	cpt.LoadFromFile(filename, &appState)
+
 	app := &App{
 		cfg:   cfg,
+		cpt:   cpt,
 		state: &appState,
 	}
 	if app.state == nil {
@@ -112,5 +117,5 @@ func (a *App) saveState(ctx context.Context) {
 		slog.Debug("context is done, not saving state")
 		return
 	}
-	crypter.SaveToFile(a.cfg.SecretKey, filename, a.state)
+	a.cpt.SaveToFile(filename, a.state)
 }

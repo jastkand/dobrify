@@ -31,14 +31,19 @@ var (
 
 type App struct {
 	cfg    config.Config
+	cpt    *crypter.Crypter
 	Client *Client
 }
 
 func NewApp(cfg config.Config) *App {
+	cpt := crypter.NewCrypter(cfg.SecretKey)
+
 	var token *Token
-	crypter.LoadFromFile(cfg.SecretKey, "tokens.bin", &token)
+	cpt.LoadFromFile("tokens.bin", &token)
+
 	return &App{
 		cfg:    cfg,
+		cpt:    cpt,
 		Client: NewClient(cfg.DobryUsername, cfg.DobryPassword, token),
 	}
 }
@@ -49,7 +54,7 @@ func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
 		slog.Error("failed to ensure token", alog.Error(err))
 		return nil, err
 	}
-	if err := crypter.SaveToFile(a.cfg.SecretKey, "tokens.bin", token); err != nil {
+	if err := a.cpt.SaveToFile("tokens.bin", token); err != nil {
 		return nil, err
 	}
 	prizes, err := a.Client.GetPrizes()

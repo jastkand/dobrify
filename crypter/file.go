@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func LoadFromFile(secretKey, filename string, dest interface{}) {
+func (c *Crypter) LoadFromFile(filename string, dest interface{}) {
 	body, err := os.ReadFile(filename)
 	if err != nil {
 		slog.Error("file not found", "filename", filename, alog.Error(err))
@@ -19,8 +19,7 @@ func LoadFromFile(secretKey, filename string, dest interface{}) {
 		return
 	}
 
-	cpt := NewCrypter(secretKey)
-	decrypted, err := cpt.Decrypt(body)
+	decrypted, err := c.Decrypt(body)
 	if err != nil {
 		slog.Error("failed to decrypt file", "filename", filename, alog.Error(err))
 		return
@@ -31,14 +30,13 @@ func LoadFromFile(secretKey, filename string, dest interface{}) {
 	}
 }
 
-func SaveToFile(secretKey, filename string, source interface{}) error {
-	cpt := NewCrypter(secretKey)
+func (c *Crypter) SaveToFile(filename string, source interface{}) error {
 	marshaled, err := json.Marshal(source)
 	if err != nil {
 		slog.Error("failed to marshal source", "filename", filename, alog.Error(err))
 		return err
 	}
-	encrypted, err := cpt.Encrypt(marshaled)
+	encrypted, err := c.Encrypt(marshaled)
 	if err != nil {
 		slog.Error("failed to encrypt source", "filename", filename, alog.Error(err))
 		return err
