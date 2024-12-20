@@ -10,6 +10,10 @@ import (
 )
 
 func (a *App) CheckPrizesAvailable(ctx context.Context, b *bot.Bot, wanted []string) {
+	if a.state.Pause {
+		return
+	}
+
 	prizes, err := hasWantedPrizes(a, wanted)
 	if err != nil || len(prizes) == 0 {
 		return
