@@ -2,6 +2,7 @@ package dobry
 
 import (
 	"dobrify/crypter"
+	"dobrify/internal/alog"
 	"dobrify/internal/config"
 	"log/slog"
 )
@@ -45,7 +46,7 @@ func NewApp(cfg config.Config) *App {
 func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
 	token, err := a.Client.EnsureToken()
 	if err != nil {
-		slog.Error("failed to ensure token", "error", err.Error())
+		slog.Error("failed to ensure token", alog.Error(err))
 		return nil, err
 	}
 	if err := crypter.SaveToFile(a.cfg.SecretKey, "tokens.bin", token); err != nil {
@@ -53,7 +54,7 @@ func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
 	}
 	prizes, err := a.Client.GetPrizes()
 	if err != nil {
-		slog.Error("failed to get prizes", "error", err.Error())
+		slog.Error("failed to get prizes", alog.Error(err))
 		return nil, err
 	}
 	slog.Info("got prizes", "prizes_count", len(prizes.Data))

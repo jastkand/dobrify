@@ -3,7 +3,7 @@ package botapp
 import (
 	"context"
 	"dobrify/dobry"
-	"errors"
+	"dobrify/internal/alog"
 	"log/slog"
 	"strings"
 
@@ -188,7 +188,7 @@ func hasWantedPrizes(a *App, wanted []string) ([]string, error) {
 	}
 	prizes, err := a.dobryApp.HasWantedPrizes(wanted)
 	if err != nil {
-		slog.Error("failed to check for wanted prizes", "error", err.Error())
+		slog.Error("failed to check for wanted prizes", alog.Error(err))
 		return nil, err
 	}
 	return prizes, nil

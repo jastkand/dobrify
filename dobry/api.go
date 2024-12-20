@@ -1,6 +1,7 @@
 package dobry
 
 import (
+	"dobrify/internal/alog"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -94,7 +95,7 @@ type refreshResponse struct {
 func (c *Client) RefreshToken() error {
 	req, err := http.NewRequest(http.MethodPost, BaseURL+"/oauth/refresh", nil)
 	if err != nil {
-		slog.Error("failed to create refresh token request", "error", err.Error())
+		slog.Error("failed to create refresh token request", alog.Error(err))
 		return err
 	}
 	req.Header.Set("Accept", mimeJSON)
@@ -107,7 +108,7 @@ func (c *Client) RefreshToken() error {
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		slog.Error("failed to send refresh token request", "error", err.Error())
+		slog.Error("failed to send refresh token request", alog.Error(err))
 		return err
 	}
 	defer resp.Body.Close()
@@ -119,7 +120,7 @@ func (c *Client) RefreshToken() error {
 
 	var parsed refreshResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		slog.Error("failed to parse refresh token response", "error", err.Error())
+		slog.Error("failed to parse refresh token response", alog.Error(err))
 		return err
 	}
 
@@ -187,13 +188,13 @@ func (c *Client) isAccessTokenValid() bool {
 	parser := jwt.NewParser()
 	token, _, err := parser.ParseUnverified(c.Token.AccessToken, jwt.MapClaims{})
 	if err != nil {
-		slog.Error("auth token is invalid", "error", err.Error())
+		slog.Error("auth token is invalid", alog.Error(err))
 		return false
 	}
 
 	exp, err := token.Claims.GetExpirationTime()
 	if err != nil {
-		slog.Error("failed to get expiration time", "error", err.Error())
+		slog.Error("failed to get expiration time", alog.Error(err))
 		return false
 	}
 

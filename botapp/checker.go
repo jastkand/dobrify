@@ -3,6 +3,7 @@ package botapp
 import (
 	"context"
 	"dobrify/dobry"
+	"dobrify/internal/alog"
 	"log/slog"
 
 	"github.com/go-telegram/bot"
@@ -31,7 +32,7 @@ func (a *App) CheckPrizesAvailable(ctx context.Context, b *bot.Bot, wanted []str
 				ParseMode: models.ParseModeMarkdown,
 			})
 			if err != nil {
-				slog.Error("failed to send message", "error", err.Error())
+				slog.Error("failed to send message", alog.Error(err))
 			}
 		}
 	}
