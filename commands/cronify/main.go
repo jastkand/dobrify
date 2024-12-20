@@ -1,4 +1,4 @@
-package main
+package cronify
 
 import (
 	"context"
@@ -16,15 +16,8 @@ import (
 	"github.com/go-telegram/bot"
 )
 
-func main() {
-	logger, close := alog.New("cron.log", config.IsDevStage())
-	defer close()
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		logger.Error("failed to load config", alog.Error(err))
-		return
-	}
+func Run(cfg config.Config) {
+	logger := alog.New(config.IsDevStage())
 
 	botOpts := []bot.Option{
 		bot.WithDebugHandler(func(format string, args ...any) {

@@ -1,4 +1,4 @@
-package main
+package botify
 
 import (
 	"context"
@@ -12,15 +12,8 @@ import (
 	"github.com/go-telegram/bot"
 )
 
-func main() {
-	logger, close := alog.New("bot.log", config.IsDevStage())
-	defer close()
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		logger.Error("failed to load config", alog.Error(err))
-		return
-	}
+func Run(cfg config.Config) {
+	logger := alog.New(cfg.IsDev())
 
 	botOpts := []bot.Option{
 		bot.WithDebugHandler(func(format string, args ...any) {

@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Stage         string `env:"STAGE,default=dev"`
+	Stage         string `env:"STAGE"`
 	BotToken      string `env:"BOT_TOKEN"`
 	DobryUsername string `env:"DOBRY_USERNAME,required"`
 	DobryPassword string `env:"DOBRY_PASSWORD,required"`
@@ -32,6 +32,10 @@ func LoadConfig() (Config, error) {
 	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
 		return Config{}, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	if cfg.Stage == "" {
+		cfg.Stage = "dev"
 	}
 
 	return cfg, nil

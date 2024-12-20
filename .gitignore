@@ -1,6 +1,7 @@
 .env
+.env.deploy
 *.bin
 *.log
-bin/
+dist/
 example_responses/
 vendor/
