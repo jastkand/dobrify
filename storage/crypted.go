@@ -1,42 +1,51 @@
-package crypter
+package storage
 
 import (
+	"dobrify/crypter"
 	"dobrify/internal/alog"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 )
 
-func (c *Crypter) LoadFromFile(filename string, dest interface{}) {
-	body, err := os.ReadFile(filename)
-	if err != nil {
-		slog.Error("file not found", "filename", filename, alog.Error(err))
-		return
-	}
+type cryptedStorage struct {
+	crtpr *crypter.Crypter
+}
 
-	if len(body) == 0 {
-		slog.Error("file is empty", "filename", filename)
-		return
-	}
-
-	decrypted, err := c.Decrypt(body)
-	if err != nil {
-		slog.Error("failed to decrypt file", "filename", filename, alog.Error(err))
-		return
-	}
-	if err := json.Unmarshal(decrypted, &dest); err != nil {
-		slog.Error("failed to unmarshal decrypted file", "filename", filename, alog.Error(err))
-		return
+func NewCryptedStore(key string) Storage {
+	return &cryptedStorage{
+		crtpr: crypter.NewCrypter(key),
 	}
 }
 
-func (c *Crypter) SaveToFile(filename string, source interface{}) error {
+func (c *cryptedStorage) LoadFromFile(filename string, dest interface{}) error {
+	body, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedToReadFile, err)
+	}
+
+	if len(body) == 0 {
+		return ErrFileIsEmpty
+	}
+
+	decrypted, err := c.crtpr.Decrypt(body)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt file: %w", err)
+	}
+	if err := json.Unmarshal(decrypted, &dest); err != nil {
+		return fmt.Errorf("failed to unmarshal file: %w", err)
+	}
+	return nil
+}
+
+func (c *cryptedStorage) SaveToFile(filename string, source interface{}) error {
 	marshaled, err := json.Marshal(source)
 	if err != nil {
 		slog.Error("failed to marshal source", "filename", filename, alog.Error(err))
 		return err
 	}
-	encrypted, err := c.Encrypt(marshaled)
+	encrypted, err := c.crtpr.Encrypt(marshaled)
 	if err != nil {
 		slog.Error("failed to encrypt source", "filename", filename, alog.Error(err))
 		return err

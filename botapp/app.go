@@ -2,18 +2,22 @@ package botapp
 
 import (
 	"context"
-	"dobrify/crypter"
 	"dobrify/dobry"
+	"dobrify/internal/alog"
 	"dobrify/internal/config"
+	"dobrify/storage"
 	"log/slog"
+	"time"
 )
 
-const filename = "app_state.bin"
+const encryptedFilename = "app_state.bin"
+const jsonFilename = "app_state.json"
 
 type AppState struct {
 	Pause       bool
 	Users       map[string]*User
 	NotifyUsers []string
+	UpdatedAt   time.Time
 }
 
 type User struct {
@@ -22,21 +26,40 @@ type User struct {
 
 type App struct {
 	cfg      config.Config
-	cpt      *crypter.Crypter
+	store    storage.Storage
+	encStore storage.Storage
 	dobryApp *dobry.App
 	state    *AppState
 }
 
 func NewApp(cfg config.Config) *App {
-	cpt := crypter.NewCrypter(cfg.SecretKey)
-
+	store := storage.NewPlainStore()
+	encStore := storage.NewCryptedStore(cfg.SecretKey)
 	var appState AppState
-	cpt.LoadFromFile(filename, &appState)
+
+	var encryptedState AppState
+	if err := encStore.LoadFromFile(encryptedFilename, &encryptedState); err != nil {
+		slog.Error("failed to load encrypted state", alog.Error(err), "filename", encryptedFilename)
+	}
+
+	var jsonState AppState
+	if err := encStore.LoadFromFile(encryptedFilename, &jsonState); err != nil {
+		slog.Error("failed to load json state", alog.Error(err), "filename", jsonFilename)
+	}
+
+	if !jsonState.UpdatedAt.IsZero() && jsonState.UpdatedAt.After(encryptedState.UpdatedAt) {
+		slog.Info("using json state")
+		appState = jsonState
+	} else {
+		slog.Info("using encrypted state")
+		appState = encryptedState
+	}
 
 	app := &App{
-		cfg:   cfg,
-		cpt:   cpt,
-		state: &appState,
+		cfg:      cfg,
+		store:    store,
+		encStore: encStore,
+		state:    &appState,
 	}
 	if app.state == nil {
 		app.state = app.initState()
@@ -117,5 +140,7 @@ func (a *App) saveState(ctx context.Context) {
 		slog.Debug("context is done, not saving state")
 		return
 	}
-	a.cpt.SaveToFile(filename, a.state)
+	a.state.UpdatedAt = time.Now()
+	a.encStore.SaveToFile(encryptedFilename, a.state)
+	a.store.SaveToFile(jsonFilename, a.state)
 }

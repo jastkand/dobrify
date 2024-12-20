@@ -1,9 +1,9 @@
 package dobry
 
 import (
-	"dobrify/crypter"
 	"dobrify/internal/alog"
 	"dobrify/internal/config"
+	"dobrify/storage"
 	"log/slog"
 )
 
@@ -30,21 +30,24 @@ var (
 )
 
 type App struct {
-	cfg    config.Config
-	cpt    *crypter.Crypter
-	Client *Client
+	cfg      config.Config
+	store    storage.Storage
+	encStore storage.Storage
+	Client   *Client
 }
 
 func NewApp(cfg config.Config) *App {
-	cpt := crypter.NewCrypter(cfg.SecretKey)
+	encStore := storage.NewCryptedStore(cfg.SecretKey)
 
 	var token *Token
-	cpt.LoadFromFile("tokens.bin", &token)
+	if err := encStore.LoadFromFile("tokens.bin", &token); err != nil {
+		slog.Error("failed to load token", alog.Error(err))
+	}
 
 	return &App{
-		cfg:    cfg,
-		cpt:    cpt,
-		Client: NewClient(cfg.DobryUsername, cfg.DobryPassword, token),
+		cfg:      cfg,
+		encStore: encStore,
+		Client:   NewClient(cfg.DobryUsername, cfg.DobryPassword, token),
 	}
 }
 
@@ -54,7 +57,7 @@ func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
 		slog.Error("failed to ensure token", alog.Error(err))
 		return nil, err
 	}
-	if err := a.cpt.SaveToFile("tokens.bin", token); err != nil {
+	if err := a.encStore.SaveToFile("tokens.bin", token); err != nil {
 		return nil, err
 	}
 	prizes, err := a.Client.GetPrizes()
