@@ -152,6 +152,7 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	}
 	prizes, err := hasWantedPrizes(a, dobry.AllPrizes)
 	if err != nil {
+		slog.Error("failed to check prizes", alog.Error(err))
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Ошибка при запросе призов.",
@@ -181,7 +182,6 @@ func hasWantedPrizes(a *App, wanted []string) ([]string, error) {
 	}
 	prizes, err := a.dobryApp.HasWantedPrizes(wanted)
 	if err != nil {
-		slog.Error("failed to check for wanted prizes", alog.Error(err))
 		return nil, err
 	}
 	return prizes, nil

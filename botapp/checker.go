@@ -16,7 +16,11 @@ func (a *App) CheckPrizesAvailable(ctx context.Context, b *bot.Bot, wanted []str
 	}
 
 	prizes, err := hasWantedPrizes(a, wanted)
-	if err != nil || len(prizes) == 0 {
+	if err != nil {
+		slog.Error("failed to check prizes", alog.Error(err))
+		return
+	}
+	if len(prizes) == 0 {
 		return
 	}
 
