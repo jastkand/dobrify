@@ -12,6 +12,13 @@ import (
 
 const storeFilename = "app_state.json"
 
+type subUserState int
+
+const (
+	subUserStateNone subUserState = iota
+	subUserStateUsername
+)
+
 type AppState struct {
 	Pause       bool
 	Users       map[string]*User
@@ -24,10 +31,11 @@ type User struct {
 }
 
 type App struct {
-	cfg      config.Config
-	store    storage.Storage
-	dobryApp *dobry.App
-	state    *AppState
+	cfg          config.Config
+	store        storage.Storage
+	dobryApp     *dobry.App
+	state        *AppState
+	subUserState subUserState
 }
 
 func NewApp(cfg config.Config) *App {
@@ -39,9 +47,10 @@ func NewApp(cfg config.Config) *App {
 	}
 
 	app := &App{
-		cfg:   cfg,
-		store: store,
-		state: &appState,
+		cfg:          cfg,
+		store:        store,
+		state:        &appState,
+		subUserState: subUserStateNone,
 	}
 	if app.state == nil {
 		app.state = app.initState()
@@ -77,47 +86,53 @@ func (a *App) fixupState() {
 }
 
 func (a *App) pause(ctx context.Context) {
-	slog.Info("pausing")
+	slog.Debug("pause")
 	a.state.Pause = true
 	go a.saveState(ctx)
 }
 
 func (a *App) resume(ctx context.Context) {
-	slog.Info("resuming")
+	slog.Debug("resume")
 	a.state.Pause = false
 	go a.saveState(ctx)
 }
 
 func (a *App) addUser(ctx context.Context, username string, chatID int64) bool {
+	slog.Debug("add user", "username", username, "chatID", chatID)
 	if a.state.Users == nil {
 		a.state.Users = make(map[string]*User)
 	}
-	if _, ok := a.state.Users[username]; ok {
+	normalized := normalizeUsername(username)
+	if _, ok := a.state.Users[normalized]; ok {
 		return false
 	}
 	slog.Info("adding user", "username", username, "chatID", chatID)
-	a.state.Users[username] = &User{ChatID: chatID}
+	a.state.Users[normalized] = &User{ChatID: chatID}
 	go a.saveState(ctx)
 	return true
 }
 
 func (a *App) subscribeUser(ctx context.Context, username string) (bool, error) {
+	slog.Debug("subscribe user", "username", username)
+	normalized := normalizeUsername(username)
+	if _, exists := a.state.Users[normalized]; !exists {
+		slog.Warn("user not found", "username", username)
+		return false, errUserNotFound
+	}
 	for _, uname := range a.state.NotifyUsers {
-		if a.state.Users[uname] == nil {
-			slog.Warn("user not found", "username", uname)
-			return false, errUserNotFound
-		}
-		if uname == username {
+		if uname == normalized {
+			slog.Warn("user already subscribed", "username", username)
 			return false, nil
 		}
 	}
 	slog.Info("subscribing user", "username", username)
-	a.state.NotifyUsers = append(a.state.NotifyUsers, username)
+	a.state.NotifyUsers = append(a.state.NotifyUsers, normalized)
 	go a.saveState(ctx)
 	return true, nil
 }
 
 func (a *App) saveState(ctx context.Context) {
+	slog.Debug("save state")
 	if ctx.Err() != nil {
 		slog.Debug("context is done, not saving state")
 		return

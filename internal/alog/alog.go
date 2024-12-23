@@ -31,5 +31,9 @@ func logHandler(w io.Writer, opts *slog.HandlerOptions, devMode bool) slog.Handl
 }
 
 func Error(err error) slog.Attr {
-	return slog.String("error", err.Error())
+	var errorString string
+	if err != nil {
+		errorString = err.Error()
+	}
+	return slog.String("error", errorString)
 }

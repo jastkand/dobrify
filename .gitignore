@@ -1,7 +1,8 @@
 .env
 .env.deploy
-*.bin
 *.log
 dist/
 example_responses/
 vendor/
+tokens.bin
+app_state.json

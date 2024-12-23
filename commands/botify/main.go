@@ -15,6 +15,8 @@ import (
 func Run(cfg config.Config) {
 	logger := alog.New(cfg.IsDev())
 
+	app := botapp.NewApp(cfg)
+
 	botOpts := []bot.Option{
 		bot.WithDebugHandler(func(format string, args ...any) {
 			logger.Debug(fmt.Sprintf(format, args...))
@@ -22,7 +24,7 @@ func Run(cfg config.Config) {
 		bot.WithErrorsHandler(func(err error) {
 			logger.Error("bot error", alog.Error(err))
 		}),
-		bot.WithDefaultHandler(botapp.DefaultHandler),
+		bot.WithDefaultHandler(app.DefaultHandler),
 	}
 	if cfg.IsDev() {
 		botOpts = append(botOpts, bot.WithDebug())
@@ -34,10 +36,9 @@ func Run(cfg config.Config) {
 		return
 	}
 
-	app := botapp.NewApp(cfg)
-	app.RegisterHandlers(b)
-
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+
+	app.RegisterHandlers(ctx, b)
 	b.Start(ctx)
 }

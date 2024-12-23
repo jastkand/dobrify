@@ -11,16 +11,45 @@ import (
 	"github.com/go-telegram/bot/models"
 )
 
-func (a *App) RegisterHandlers(b *bot.Bot) {
+func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, a.startHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/check", bot.MatchTypeExact, a.checkHandler)
+	// Admin commands
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypeExact, a.statusHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub ", bot.MatchTypePrefix, a.subscribeHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub", bot.MatchTypeExact, a.subscribeHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub ", bot.MatchTypePrefix, a.subscribeByUsernameHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/pause", bot.MatchTypeExact, a.pauseHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/resume", bot.MatchTypeExact, a.resumeHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/check", bot.MatchTypeExact, a.checkHandler)
+
+	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+		Commands: []models.BotCommand{
+			{Command: "start", Description: "Начать работу"},
+			{Command: "check", Description: "Проверить доступные призы"},
+		},
+	})
+
+	if adminUser, exists := a.state.Users[a.cfg.AdminUsername]; exists {
+		b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+			Commands: []models.BotCommand{
+				{Command: "start", Description: "Начать работу"},
+				{Command: "check", Description: "Проверить доступные призы"},
+				{Command: "status", Description: "Показать статус"},
+				{Command: "sub", Description: "Подписать пользователя"},
+				{Command: "pause", Description: "Приостановить работу"},
+				{Command: "resume", Description: "Возобновить работу"},
+			},
+			Scope: &models.BotCommandScopeChat{ChatID: adminUser.ChatID},
+		})
+	}
 }
 
-func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (a *App) DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update.Message.From.Username == a.cfg.AdminUsername && a.subUserState == subUserStateUsername {
+		if ok := a.handleUserSubscribe(ctx, b, update, update.Message.Text); ok {
+			a.subUserState = subUserStateNone
+		}
+		return
+	}
 	if update.Message != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -38,6 +67,7 @@ func (a *App) adminGuard(ctx context.Context, b *bot.Bot, update *models.Update)
 }
 
 func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("start", "username", update.Message.From.Username)
 	a.addUser(ctx, update.Message.From.Username, update.Message.Chat.ID)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -47,10 +77,12 @@ func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 }
 
 func (a *App) statusHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("status", "username", update.Message.From.Username)
 	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
+	a.subUserState = subUserStateNone
 	var text string
 	if a.state.Pause {
 		text = "Отдыхаю."
@@ -73,10 +105,25 @@ func (a *App) statusHandler(ctx context.Context, b *bot.Bot, update *models.Upda
 }
 
 func (a *App) subscribeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("subscribe", "username", update.Message.From.Username)
 	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
+	a.subUserState = subUserStateUsername
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Введи юзернейм пользователя для подписки",
+	})
+}
+
+func (a *App) subscribeByUsernameHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("subscribe by username", "username", update.Message.From.Username, "text", update.Message.Text)
+	if update.Message.From.Username != a.cfg.AdminUsername {
+		a.adminGuard(ctx, b, update)
+		return
+	}
+	a.subUserState = subUserStateNone
 	text := update.Message.Text
 	if len(text) <= 5 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -85,26 +132,35 @@ func (a *App) subscribeHandler(ctx context.Context, b *bot.Bot, update *models.U
 		})
 		return
 	}
-	username := text[5:]
+	a.handleUserSubscribe(ctx, b, update, text[5:])
+}
+
+func (a *App) handleUserSubscribe(ctx context.Context, b *bot.Bot, update *models.Update, username string) bool {
+	slog.Debug("handle user subscribe", "username", update.Message.From.Username, "sub", username)
 	_, err := a.subscribeUser(ctx, username)
 	if err != nil {
+		slog.Error("failed to subscribe user", alog.Error(err), "username", username)
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Пользаватель @" + username + " не зарегистрирован.",
 		})
-		return
+		return false
 	}
+	slog.Debug("subscribed user", "username", username)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Пользаватель @" + username + " подписан.",
 	})
+	return true
 }
 
 func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("pause", "username", update.Message.From.Username)
 	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
+	a.subUserState = subUserStateNone
 	a.pause(ctx)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
@@ -113,18 +169,15 @@ func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 }
 
 func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("resume", "username", update.Message.From.Username)
 	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
 	}
-	if a.state.Pause == false {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Я и так работаю.",
-		})
-		return
+	a.subUserState = subUserStateNone
+	if a.state.Pause != false {
+		a.resume(ctx)
 	}
-	a.resume(ctx)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Готов к роботе.",
@@ -132,17 +185,7 @@ func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Upda
 }
 
 func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	canCheck := false
-	for _, uname := range a.state.NotifyUsers {
-		if uname == update.Message.From.Username {
-			canCheck = true
-			break
-		}
-	}
-	if !canCheck {
-		a.adminGuard(ctx, b, update)
-		return
-	}
+	slog.Debug("check", "username", update.Message.From.Username)
 	prizes, err := hasWantedPrizes(a, dobry.AllPrizes)
 	if err != nil {
 		slog.Error("failed to check prizes", alog.Error(err))
