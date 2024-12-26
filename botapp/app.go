@@ -7,6 +7,7 @@ import (
 	"dobrify/internal/config"
 	"dobrify/storage"
 	"log/slog"
+	"slices"
 	"time"
 )
 
@@ -103,11 +104,24 @@ func (a *App) addUser(ctx context.Context, username string, chatID int64) bool {
 		a.state.Users = make(map[string]*User)
 	}
 	normalized := normalizeUsername(username)
-	if _, ok := a.state.Users[normalized]; ok {
+	if _, exists := a.state.Users[normalized]; exists {
 		return false
 	}
 	slog.Info("adding user", "username", username, "chatID", chatID)
 	a.state.Users[normalized] = &User{ChatID: chatID}
+	go a.saveState(ctx)
+	return true
+}
+
+func (a *App) removeUser(ctx context.Context, username string) bool {
+	slog.Debug("remove user", "username", username)
+	normalized := normalizeUsername(username)
+	a.state.NotifyUsers = slices.DeleteFunc(a.state.NotifyUsers, func(el string) bool {
+		return el == normalized
+	})
+	if _, exists := a.state.Users[normalized]; exists {
+		delete(a.state.Users, normalized)
+	}
 	go a.saveState(ctx)
 	return true
 }

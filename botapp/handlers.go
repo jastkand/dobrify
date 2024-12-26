@@ -14,6 +14,7 @@ import (
 func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, a.startHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/check", bot.MatchTypeExact, a.checkHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/stop", bot.MatchTypeExact, a.stopHandler)
 	// Admin commands
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypeExact, a.statusHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub", bot.MatchTypeExact, a.subscribeHandler)
@@ -31,7 +32,6 @@ func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 	if adminUser, exists := a.state.Users[a.cfg.AdminUsername]; exists {
 		b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 			Commands: []models.BotCommand{
-				{Command: "start", Description: "Начать работу"},
 				{Command: "check", Description: "Проверить доступные призы"},
 				{Command: "status", Description: "Показать статус"},
 				{Command: "sub", Description: "Подписать пользователя"},
@@ -72,6 +72,16 @@ func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      "Привет, *" + bot.EscapeMarkdown(update.Message.From.FirstName) + "*",
+		ParseMode: models.ParseModeMarkdown,
+	})
+}
+
+func (a *App) stopHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("stop", "username", update.Message.From.Username)
+	a.removeUser(ctx, update.Message.From.Username)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      "Пока, *" + bot.EscapeMarkdown(update.Message.From.FirstName) + "*",
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
