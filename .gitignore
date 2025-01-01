@@ -1,6 +1,5 @@
 .env
 .env.deploy
-*.log
 dist/
 example_responses/
 vendor/
