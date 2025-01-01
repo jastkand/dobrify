@@ -40,7 +40,7 @@ type App struct {
 }
 
 func NewApp(cfg config.Config) *App {
-	store := storage.NewPlainStore()
+	store := storage.NewJSONStore()
 
 	var appState AppState
 	if err := store.LoadFromFile(storeFilename, &appState); err != nil {
