@@ -7,7 +7,7 @@ endif
 
 runner:
 	@go run cmd/runner/main.go $(RUN_ARGS)
-	
+
 bot.dev:
 	@make runner bot
 
@@ -28,7 +28,7 @@ build.linux:
 
 include .env.deploy
 deploy: .env.deploy build.linux
-	@echo "Deploying..."	
+	@echo "Deploying..."
 	@scp -rp ./dist/dobrify-linux $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)
 	@ssh $(DEPLOY_USER)@$(DEPLOY_HOST) "sh $(DEPLOY_PATH)/after_deploy.sh"
 	@echo "Deploy complete!"
