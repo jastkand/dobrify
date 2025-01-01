@@ -14,6 +14,9 @@ bot.dev:
 cron.dev:
 	@make runner cron
 
+test:
+	@go test -v ./...
+
 build:
 	@echo "Building..."
 	@STAGE=prod go build -o dist/dobrify cmd/runner/main.go
