@@ -38,8 +38,6 @@ func Run(cfg config.Config) {
 		return
 	}
 
-	app := botapp.NewApp(cfg)
-
 	jobCtx, jobCancel := context.WithCancel(context.Background())
 	defer jobCancel()
 
@@ -52,6 +50,7 @@ func Run(cfg config.Config) {
 	_, err = s.NewJob(
 		gocron.CronJob("*/10 * * * *", false),
 		gocron.NewTask(func() {
+			app := botapp.NewApp(cfg)
 			app.CheckPrizesAvailable(jobCtx, b, dobry.Glasses)
 		}),
 	)
