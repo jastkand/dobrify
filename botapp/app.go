@@ -21,10 +21,10 @@ const (
 )
 
 type AppState struct {
-	Pause       bool
-	Users       map[string]*User
-	NotifyUsers []string
-	Version     int64 `json:"v"`
+	Pause       bool             `json:"pause"`
+	Users       map[string]*User `json:"users"`
+	NotifyUsers []string         `json:"notify_users"`
+	Version     int64            `json:"v"`
 }
 
 type User struct {
