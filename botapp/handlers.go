@@ -14,18 +14,23 @@ import (
 func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, a.startHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/check", bot.MatchTypeExact, a.checkHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/pause", bot.MatchTypeExact, a.pauseHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/resume", bot.MatchTypeExact, a.resumeHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/stop", bot.MatchTypeExact, a.stopHandler)
 	// Admin commands
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypeExact, a.statusHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub", bot.MatchTypeExact, a.subscribeHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub ", bot.MatchTypePrefix, a.subscribeByUsernameHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/pause", bot.MatchTypeExact, a.pauseHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/resume", bot.MatchTypeExact, a.resumeHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/pauseAll", bot.MatchTypeExact, a.pauseAllHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/resumeAll", bot.MatchTypeExact, a.resumeAllHandler)
 
 	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
 			{Command: "start", Description: "Начать работу"},
 			{Command: "check", Description: "Проверить доступные призы"},
+			{Command: "pause", Description: "Приостановить отправку уведомлений"},
+			{Command: "resume", Description: "Возобновить отправку уведомлений"},
+			{Command: "stop", Description: "Закончить работу"},
 		},
 	})
 
@@ -33,10 +38,12 @@ func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 		b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 			Commands: []models.BotCommand{
 				{Command: "check", Description: "Проверить доступные призы"},
+				{Command: "pause", Description: "Приостановить отправку уведомлений"},
+				{Command: "resume", Description: "Возобновить отправку уведомлений"},
 				{Command: "status", Description: "Показать статус"},
 				{Command: "sub", Description: "Подписать пользователя"},
-				{Command: "pause", Description: "Приостановить работу"},
-				{Command: "resume", Description: "Возобновить работу"},
+				{Command: "pauseAll", Description: "Приостановить работу"},
+				{Command: "resumeAll", Description: "Возобновить работу"},
 			},
 			Scope: &models.BotCommandScopeChat{ChatID: adminUser.ChatID},
 		})
@@ -166,6 +173,24 @@ func (a *App) handleUserSubscribe(ctx context.Context, b *bot.Bot, update *model
 
 func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	slog.Debug("pause", "username", update.Message.From.Username)
+	a.pauseUser(ctx, update.Message.From.Username)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Отдыхаю.",
+	})
+}
+
+func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("resume", "username", update.Message.From.Username)
+	a.resumeUser(ctx, update.Message.From.Username)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Готов к роботе.",
+	})
+}
+
+func (a *App) pauseAllHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("resumeAll", "username", update.Message.From.Username)
 	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return
@@ -178,8 +203,8 @@ func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	})
 }
 
-func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	slog.Debug("resume", "username", update.Message.From.Username)
+func (a *App) resumeAllHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	slog.Debug("resumeAll", "username", update.Message.From.Username)
 	if update.Message.From.Username != a.cfg.AdminUsername {
 		a.adminGuard(ctx, b, update)
 		return

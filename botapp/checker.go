@@ -30,6 +30,9 @@ func (a *App) CheckPrizesAvailable(ctx context.Context, b *bot.Bot, wanted []str
 	}
 	for _, username := range a.state.NotifyUsers {
 		if user, ok := a.state.Users[username]; ok {
+			if user.Pause {
+				continue
+			}
 			_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:    user.ChatID,
 				Text:      text,

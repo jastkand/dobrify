@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const storeFilename = "app_state.json"
-
 type subUserState int
 
 const (
@@ -29,6 +27,7 @@ type AppState struct {
 
 type User struct {
 	ChatID int64 `json:"cid"`
+	Pause  bool  `json:"pause"`
 }
 
 type App struct {
@@ -43,8 +42,8 @@ func NewApp(cfg config.Config) *App {
 	store := storage.NewJSONStore()
 
 	var appState AppState
-	if err := store.LoadFromFile(storeFilename, &appState); err != nil {
-		slog.Error("failed to load json state", alog.Error(err), "filename", storeFilename)
+	if err := store.LoadFromFile(cfg.StorePath, &appState); err != nil {
+		slog.Error("failed to load json state", alog.Error(err), "filename", cfg.StorePath)
 	}
 
 	app := &App{
@@ -96,6 +95,24 @@ func (a *App) resume(ctx context.Context) {
 	slog.Debug("resume")
 	a.state.Pause = false
 	go a.saveState(ctx)
+}
+
+func (a *App) pauseUser(ctx context.Context, username string) {
+	slog.Debug("pause user", "username", username)
+	normalized := normalizeUsername(username)
+	if user, exists := a.state.Users[normalized]; exists {
+		user.Pause = true
+		go a.saveState(ctx)
+	}
+}
+
+func (a *App) resumeUser(ctx context.Context, username string) {
+	slog.Debug("resume user", "username", username)
+	normalized := normalizeUsername(username)
+	if user, exists := a.state.Users[normalized]; exists {
+		user.Pause = false
+		go a.saveState(ctx)
+	}
 }
 
 func (a *App) addUser(ctx context.Context, username string, chatID int64) bool {
@@ -152,7 +169,7 @@ func (a *App) saveState(ctx context.Context) {
 		return
 	}
 	a.state.Version = time.Now().UnixMilli()
-	if err := a.store.SaveToFile(storeFilename, a.state); err != nil {
-		slog.Error("failed to save json state", alog.Error(err), "filename", storeFilename)
+	if err := a.store.SaveToFile(a.cfg.StorePath, a.state); err != nil {
+		slog.Error("failed to save json state", alog.Error(err), "filename", a.cfg.StorePath)
 	}
 }

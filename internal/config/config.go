@@ -10,6 +10,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const defaultStoreFilename = "app_state.json"
+
 type Config struct {
 	Stage         string `env:"STAGE"`
 	BotToken      string `env:"BOT_TOKEN"`
@@ -17,6 +19,7 @@ type Config struct {
 	DobryPassword string `env:"DOBRY_PASSWORD,required"`
 	AdminUsername string `env:"ADMIN_USERNAME,required"`
 	SecretKey     string `env:"SECRET_KEY,required"`
+	StorePath     string `env:"STORE_PATH"`
 }
 
 func (c Config) IsDev() bool {
@@ -36,6 +39,10 @@ func LoadConfig() (Config, error) {
 
 	if cfg.Stage == "" {
 		cfg.Stage = "dev"
+	}
+
+	if cfg.StorePath == "" {
+		cfg.StorePath = defaultStoreFilename
 	}
 
 	return cfg, nil

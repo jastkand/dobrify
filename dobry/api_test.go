@@ -10,6 +10,8 @@ import (
 )
 
 func TestClient_isAccessTokenValid(t *testing.T) {
+	t.Parallel()
+
 	generateToken := func(claims jwt.Claims) string {
 		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 		rsaKey, _ := rsa.GenerateKey(rand.Reader, 1024)
@@ -18,6 +20,7 @@ func TestClient_isAccessTokenValid(t *testing.T) {
 	}
 
 	t.Run("valid token", func(t *testing.T) {
+		t.Parallel()
 		token := generateToken(jwt.MapClaims{"exp": float64(time.Now().Unix() + 1000), "scope": "ROLE_USER", "sub": 13393})
 		client := NewClient("username", "password", &Token{
 			AccessToken: token,
@@ -28,6 +31,7 @@ func TestClient_isAccessTokenValid(t *testing.T) {
 	})
 
 	t.Run("expired token", func(t *testing.T) {
+		t.Parallel()
 		token := generateToken(jwt.MapClaims{"exp": float64(time.Now().Unix() - 100), "scope": "ROLE_USER", "sub": 13393})
 		client := NewClient("username", "password", &Token{
 			AccessToken: token,
