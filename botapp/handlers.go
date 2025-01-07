@@ -21,8 +21,8 @@ func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypeExact, a.statusHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub", bot.MatchTypeExact, a.subscribeHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/sub ", bot.MatchTypePrefix, a.subscribeByUsernameHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/pauseAll", bot.MatchTypeExact, a.pauseAllHandler)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/resumeAll", bot.MatchTypeExact, a.resumeAllHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/pause_all", bot.MatchTypeExact, a.pauseAllHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/resume_all", bot.MatchTypeExact, a.resumeAllHandler)
 
 	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
@@ -42,8 +42,8 @@ func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 				{Command: "resume", Description: "Возобновить отправку уведомлений"},
 				{Command: "status", Description: "Показать статус"},
 				{Command: "sub", Description: "Подписать пользователя"},
-				{Command: "pauseAll", Description: "Приостановить работу"},
-				{Command: "resumeAll", Description: "Возобновить работу"},
+				{Command: "pause_all", Description: "Приостановить работу"},
+				{Command: "resume_all", Description: "Возобновить работу"},
 			},
 			Scope: &models.BotCommandScopeChat{ChatID: adminUser.ChatID},
 		})
