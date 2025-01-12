@@ -4,6 +4,7 @@ import (
 	"context"
 	"dobrify/dobry"
 	"dobrify/internal/alog"
+	"fmt"
 	"log/slog"
 
 	"github.com/go-telegram/bot"
@@ -66,7 +67,7 @@ func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	a.addUser(ctx, update.Message.From.Username, update.Message.Chat.ID)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      "Привет, *" + bot.EscapeMarkdown(update.Message.From.FirstName) + "*",
+		Text:      fmt.Sprintf("Привет, *%s*! Я буду присылать уведомления когда появятся новые призы.", bot.EscapeMarkdown(update.Message.From.FirstName)),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
@@ -76,7 +77,7 @@ func (a *App) stopHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	a.removeUser(ctx, update.Message.From.Username)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      "Пока, *" + bot.EscapeMarkdown(update.Message.From.FirstName) + "*",
+		Text:      fmt.Sprintf("Пока, *%s*! Я больше не буду присылать уведомления.", bot.EscapeMarkdown(update.Message.From.FirstName)),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
