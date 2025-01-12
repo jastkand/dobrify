@@ -67,7 +67,7 @@ func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	a.addUser(ctx, update.Message.From.Username, update.Message.Chat.ID)
 	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Привет, *%s*\\! Я буду присылать уведомления когда появятся новые призы.", bot.EscapeMarkdown(update.Message.From.FirstName)),
+		Text:      bot.EscapeMarkdown(fmt.Sprintf("Привет, %s. Я буду присылать уведомления когда появятся новые призы.", update.Message.From.FirstName)),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
@@ -77,7 +77,7 @@ func (a *App) stopHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	a.removeUser(ctx, update.Message.From.Username)
 	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Пока, *%s*\\! Я больше не буду присылать уведомления.", bot.EscapeMarkdown(update.Message.From.FirstName)),
+		Text:      bot.EscapeMarkdown(fmt.Sprintf("Пока, %s. Я больше не буду присылать уведомления.", update.Message.From.FirstName)),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
