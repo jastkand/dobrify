@@ -47,7 +47,7 @@ func (a *App) RegisterHandlers(ctx context.Context, b *bot.Bot) {
 
 func (a *App) DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		sendMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Ничего не понятно 🤔",
 		})
@@ -56,7 +56,7 @@ func (a *App) DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Upd
 
 func (a *App) adminGuard(ctx context.Context, b *bot.Bot, update *models.Update) {
 	slog.Info("admin guard", "username", update.Message.From.Username)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   `Сюда нельзя ¯\_(ツ)_/¯`,
 	})
@@ -65,9 +65,9 @@ func (a *App) adminGuard(ctx context.Context, b *bot.Bot, update *models.Update)
 func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	slog.Debug("start", "username", update.Message.From.Username)
 	a.addUser(ctx, update.Message.From.Username, update.Message.Chat.ID)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Привет, *%s*! Я буду присылать уведомления когда появятся новые призы.", bot.EscapeMarkdown(update.Message.From.FirstName)),
+		Text:      fmt.Sprintf("Привет, *%s*\\! Я буду присылать уведомления когда появятся новые призы.", bot.EscapeMarkdown(update.Message.From.FirstName)),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
@@ -75,9 +75,9 @@ func (a *App) startHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 func (a *App) stopHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	slog.Debug("stop", "username", update.Message.From.Username)
 	a.removeUser(ctx, update.Message.From.Username)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      fmt.Sprintf("Пока, *%s*! Я больше не буду присылать уведомления.", bot.EscapeMarkdown(update.Message.From.FirstName)),
+		Text:      fmt.Sprintf("Пока, *%s*\\! Я больше не буду присылать уведомления.", bot.EscapeMarkdown(update.Message.From.FirstName)),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
@@ -85,7 +85,7 @@ func (a *App) stopHandler(ctx context.Context, b *bot.Bot, update *models.Update
 func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	slog.Debug("pause", "username", update.Message.From.Username)
 	a.pauseUser(ctx, update.Message.From.Username)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Отдыхаю.",
 	})
@@ -94,7 +94,7 @@ func (a *App) pauseHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 func (a *App) resumeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	slog.Debug("resume", "username", update.Message.From.Username)
 	a.resumeUser(ctx, update.Message.From.Username)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Готов к роботе.",
 	})
@@ -107,7 +107,7 @@ func (a *App) pauseAllHandler(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 	a.pause(ctx)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Отдыхаю.",
 	})
@@ -122,7 +122,7 @@ func (a *App) resumeAllHandler(ctx context.Context, b *bot.Bot, update *models.U
 	if a.state.Pause != false {
 		a.resume(ctx)
 	}
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	sendMessage(ctx, b, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Готов к роботе.",
 	})
@@ -133,7 +133,7 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 	prizes, err := a.getAvailablePrizes()
 	if err != nil {
 		slog.Error("failed to check prizes", alog.Error(err))
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		sendMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Ошибка при запросе призов.",
 		})
@@ -144,14 +144,21 @@ func (a *App) checkHandler(ctx context.Context, b *bot.Bot, update *models.Updat
 		for prize := range prizes {
 			text += "- " + dobry.PrizeName(prize) + "\n"
 		}
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		sendMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   text,
 		})
 	} else {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		sendMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Нет доступных призов.",
 		})
+	}
+}
+
+func sendMessage(ctx context.Context, bot *bot.Bot, params *bot.SendMessageParams) {
+	_, err := bot.SendMessage(ctx, params)
+	if err != nil {
+		slog.Error("failed to send message", alog.Error(err))
 	}
 }
