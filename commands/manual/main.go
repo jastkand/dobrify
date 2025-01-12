@@ -9,7 +9,7 @@ import (
 
 func Run(cfg config.Config) {
 	app := dobry.NewApp(cfg)
-	prizes, err := app.HasWantedPrizes(dobry.Glasses)
+	prizes, err := app.GetAvailablePrizes()
 	if err != nil {
 		fmt.Printf("failed to check for wanted prizes: %v\n", err)
 		return

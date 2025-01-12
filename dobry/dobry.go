@@ -4,6 +4,7 @@ import (
 	"dobrify/internal/alog"
 	"dobrify/internal/config"
 	"dobrify/storage"
+	"fmt"
 	"log/slog"
 )
 
@@ -33,7 +34,7 @@ type App struct {
 	cfg      config.Config
 	store    storage.Storage
 	encStore storage.Storage
-	Client   *Client
+	dobryApi *Client
 }
 
 func NewApp(cfg config.Config) *App {
@@ -47,41 +48,44 @@ func NewApp(cfg config.Config) *App {
 	return &App{
 		cfg:      cfg,
 		encStore: encStore,
-		Client:   NewClient(cfg.DobryUsername, cfg.DobryPassword, token),
+		dobryApi: NewClient(cfg.DobryUsername, cfg.DobryPassword, token),
 	}
 }
 
-func (a *App) HasWantedPrizes(wantedPrizes []string) ([]string, error) {
-	token, err := a.Client.EnsureToken()
-	if err != nil {
-		slog.Error("failed to ensure token", alog.Error(err))
+func (a *App) GetAvailablePrizes() ([]string, error) {
+	slog.Debug("getting available prizes")
+	if err := a.renewToken(); err != nil {
+		slog.Error("failed to renew token", alog.Error(err))
 		return nil, err
 	}
-	if err := a.encStore.SaveToFile("tokens.bin", token); err != nil {
-		return nil, err
-	}
-	prizes, err := a.Client.GetPrizes()
+	prizes, err := a.dobryApi.GetPrizes()
 	if err != nil {
 		slog.Error("failed to get prizes", alog.Error(err))
 		return nil, err
 	}
-	slog.Info("got prizes", "prizes_count", len(prizes.Data))
 	var availablePrizes []string
 	for _, prize := range prizes.Data {
-		if isWantedPrize(wantedPrizes, prize.Alias) && !prize.TotalLimit {
+		if !prize.TotalLimit {
 			availablePrizes = append(availablePrizes, prize.Alias)
 		}
 	}
+	slog.Debug("got prizes",
+		slog.Int("all_prizes_count", len(prizes.Data)),
+		slog.Int("available_prizes_count", len(availablePrizes)),
+		slog.Any("available_prizes", availablePrizes),
+	)
 	return availablePrizes, nil
 }
 
-func isWantedPrize(wantedPrizes []string, prize string) bool {
-	for _, wanted := range wantedPrizes {
-		if prize == wanted {
-			return true
-		}
+func (a *App) renewToken() error {
+	token, err := a.dobryApi.EnsureToken()
+	if err != nil {
+		return fmt.Errorf("failed to ensure token: %w", err)
 	}
-	return false
+	if err := a.encStore.SaveToFile("tokens.bin", token); err != nil {
+		return fmt.Errorf("failed to save token: %w", err)
+	}
+	return nil
 }
 
 func PrizeName(prize string) string {

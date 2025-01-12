@@ -3,7 +3,6 @@ package cronify
 import (
 	"context"
 	"dobrify/botapp"
-	"dobrify/dobry"
 	"dobrify/internal/alog"
 	"dobrify/internal/config"
 	"fmt"
@@ -51,7 +50,7 @@ func Run(cfg config.Config) {
 		gocron.CronJob("*/10 * * * *", false),
 		gocron.NewTask(func() {
 			app := botapp.NewApp(cfg)
-			app.CheckPrizesAvailable(jobCtx, b, dobry.Glasses)
+			app.CheckPrizesAvailable(jobCtx, b)
 		}),
 	)
 	if err != nil {

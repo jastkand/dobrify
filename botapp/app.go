@@ -7,22 +7,13 @@ import (
 	"dobrify/internal/config"
 	"dobrify/storage"
 	"log/slog"
-	"slices"
 	"time"
 )
 
-type subUserState int
-
-const (
-	subUserStateNone subUserState = iota
-	subUserStateUsername
-)
-
 type AppState struct {
-	Pause       bool             `json:"pause"`
-	Users       map[string]*User `json:"users"`
-	NotifyUsers []string         `json:"notify_users"`
-	Version     int64            `json:"v"`
+	Pause   bool             `json:"pause"`
+	Users   map[string]*User `json:"users"`
+	Version int64            `json:"v"`
 }
 
 type User struct {
@@ -31,11 +22,10 @@ type User struct {
 }
 
 type App struct {
-	cfg          config.Config
-	store        storage.Storage
-	dobryApp     *dobry.App
-	state        *AppState
-	subUserState subUserState
+	cfg      config.Config
+	store    storage.Storage
+	dobryApp *dobry.App
+	state    *AppState
 }
 
 func NewApp(cfg config.Config) *App {
@@ -47,15 +37,13 @@ func NewApp(cfg config.Config) *App {
 	}
 
 	app := &App{
-		cfg:          cfg,
-		store:        store,
-		state:        &appState,
-		subUserState: subUserStateNone,
+		cfg:   cfg,
+		store: store,
+		state: &appState,
 	}
 	if app.state == nil {
 		app.state = app.initState()
 	}
-	app.fixupState()
 
 	app.dobryApp = dobry.NewApp(cfg)
 	return app
@@ -63,26 +51,9 @@ func NewApp(cfg config.Config) *App {
 
 func (a *App) initState() *AppState {
 	return &AppState{
-		Pause:       false,
-		Users:       make(map[string]*User),
-		NotifyUsers: []string{a.cfg.AdminUsername},
+		Pause: false,
+		Users: make(map[string]*User),
 	}
-}
-
-func (a *App) fixupState() {
-	if a.state.Users == nil {
-		a.state.Users = make(map[string]*User)
-	}
-	if a.state.NotifyUsers == nil {
-		a.state.NotifyUsers = []string{a.cfg.AdminUsername}
-	}
-	notifyUsers := make([]string, 0, len(a.state.NotifyUsers))
-	for _, uname := range a.state.NotifyUsers {
-		if a.state.Users[uname] != nil {
-			notifyUsers = append(notifyUsers, uname)
-		}
-	}
-	a.state.NotifyUsers = notifyUsers
 }
 
 func (a *App) pause(ctx context.Context) {
@@ -133,33 +104,11 @@ func (a *App) addUser(ctx context.Context, username string, chatID int64) bool {
 func (a *App) removeUser(ctx context.Context, username string) bool {
 	slog.Debug("remove user", "username", username)
 	normalized := normalizeUsername(username)
-	a.state.NotifyUsers = slices.DeleteFunc(a.state.NotifyUsers, func(el string) bool {
-		return el == normalized
-	})
 	if _, exists := a.state.Users[normalized]; exists {
 		delete(a.state.Users, normalized)
 	}
 	go a.saveState(ctx)
 	return true
-}
-
-func (a *App) subscribeUser(ctx context.Context, username string) (bool, error) {
-	slog.Debug("subscribe user", "username", username)
-	normalized := normalizeUsername(username)
-	if _, exists := a.state.Users[normalized]; !exists {
-		slog.Warn("user not found", "username", username)
-		return false, errUserNotFound
-	}
-	for _, uname := range a.state.NotifyUsers {
-		if uname == normalized {
-			slog.Warn("user already subscribed", "username", username)
-			return false, nil
-		}
-	}
-	slog.Info("subscribing user", "username", username)
-	a.state.NotifyUsers = append(a.state.NotifyUsers, normalized)
-	go a.saveState(ctx)
-	return true, nil
 }
 
 func (a *App) saveState(ctx context.Context) {
